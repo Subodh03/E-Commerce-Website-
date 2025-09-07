@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - E-Commerce Store{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container">
+        <div class="row align-items-center min-vh-100">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold text-white mb-4">
+                    Welcome to Our Store
+                </h1>
+                <p class="lead text-white-50 mb-4">
+                    Discover amazing products at unbeatable prices. Shop with confidence and enjoy fast, secure checkout.
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="{{ url_for('main.items') }}" class="btn btn-light btn-lg">
+                        <i class="fas fa-shopping-bag me-2"></i>
+                        Start Shopping
+                    </a>
+                    {% if not logged_in %}
+                    <a href="{{ url_for('main.signup') }}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Sign Up
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <i class="fas fa-store display-1 text-white-50"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4 text-center mb-4">
+                <div class="feature-card p-4 h-100">
+                    <i class="fas fa-shipping-fast display-4 text-primary mb-3"></i>
+                    <h4>Fast Shipping</h4>
+                    <p class="text-muted">Quick and reliable delivery to your doorstep</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="feature-card p-4 h-100">
+                    <i class="fas fa-shield-alt display-4 text-primary mb-3"></i>
+                    <h4>Secure Payment</h4>
+                    <p class="text-muted">Your transactions are protected with the latest security</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="feature-card p-4 h-100">
+                    <i class="fas fa-headset display-4 text-primary mb-3"></i>
+                    <h4>24/7 Support</h4>
+                    <p class="text-muted">Our customer service team is always here to help</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

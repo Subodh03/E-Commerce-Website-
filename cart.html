@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Cart - E-Commerce Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-shopping-cart me-2"></i>
+                Your Shopping Cart
+            </h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div id="cart-items">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading cart...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>
+                        Order Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">$0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Shipping:</span>
+                        <span class="text-success">FREE</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-3">
+                        <strong>Total:</strong>
+                        <strong id="total">$0.00</strong>
+                    </div>
+                    <button class="btn btn-success btn-lg w-100" id="checkout-btn" disabled>
+                        <i class="fas fa-credit-card me-2"></i>
+                        Proceed to Checkout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let cartData = { items: [], total: 0, count: 0 };
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCart();
+});
+
+async function loadCart() {
+    if (!isLoggedIn()) {
+        await loadLocalCart();
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/cart', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+        });
+        
+        if (response.ok) {
+            cartData = await response.json();
+            displayCart();
+            updateCartCount();
+        } else {
+            showToast('Failed to load cart', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading cart:', error);
+        showToast('Network error occurred', 'error');
+    }
+}
+
+async function loadLocalCart() {
+    const localCartItems = getLocalCart();
+    if (localCartItems.length === 0) {
+        cartData = { items: [], total: 0, count: 0 };
+        displayCart();
+        return;
+    }
+    
+    try {
+        // Fetch item details for local cart items
+        const itemIds = localCartItems.map(item => item.item_id);
+        const response = await fetch('/api/items');
+        const allItems = await response.json();
+        
+        const cartItems = localCartItems.map(localItem => {
+            const item = allItems.find(i => i.id === localItem.item_id);
+            if (item) {
+                return {
+                    id: localItem.id,
+                    item_id: localItem.item_id,
+                    quantity: localItem.quantity,
+                    item: item,
+                    total_price: item.price * localItem.quantity
+                };
+            }
+        }).filter(Boolean);
+        
+        const total = cartItems.reduce((sum, item) => sum + item.total_price, 0);
+        
+        cartData = {
+            items: cartItems,
+            total: total,
+            count: cartItems.length
+        };
+        
+        displayCart();
+        updateCartCount();
+    } catch (error) {
+        console.error('Error loading local cart:', error);
+        cartData = { items: [], total: 0, count: 0 };
+        displayCart();
+    }
+}
+
+function displayCart() {
+    const container = document.getElementById('cart-items');
+    
+    if (cartData.items.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-shopping-cart display-4 text-muted"></i>
+                <h3 class="mt-3 text-muted">Your cart is empty</h3>
+                <p class="text-muted mb-4">Add some items to get started</p>
+                <a href="/items" class="btn btn-primary">
+                    <i class="fas fa-shopping-bag me-2"></i>
+                    Continue Shopping
+                </a>
+            </div>
+        `;
+        document.getElementById('checkout-btn').disabled = true;
+    } else {
+        container.innerHTML = cartData.items.map(cartItem => `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            <div class="item-image-placeholder">
+                                <i class="fas fa-box display-6 text-muted"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="card-title mb-1">${cartItem.item.name}</h5>
+                            <p class="text-muted small mb-1">${cartItem.item.description}</p>
+                            <small class="text-muted">${cartItem.item.category}</small>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <strong class="text-primary">$${cartItem.item.price.toFixed(2)}</strong>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="input-group">
+                                <button class="btn btn-outline-secondary btn-sm" 
+                                        onclick="updateQuantity(${cartItem.id}, ${cartItem.quantity - 1})">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" class="form-control form-control-sm text-center" 
+                                       value="${cartItem.quantity}" min="1" max="${cartItem.item.stock}"
+                                       onchange="updateQuantity(${cartItem.id}, this.value)">
+                                <button class="btn btn-outline-secondary btn-sm" 
+                                        onclick="updateQuantity(${cartItem.id}, ${cartItem.quantity + 1})"
+                                        ${cartItem.quantity >= cartItem.item.stock ? 'disabled' : ''}>
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <strong>$${cartItem.total_price.toFixed(2)}</strong>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <button class="btn btn-outline-danger btn-sm" 
+                                    onclick="removeFromCart(${cartItem.id})"
+                                    title="Remove from cart">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('checkout-btn').disabled = false;
+    }
+    
+    // Update totals
+    document.getElementById('subtotal').textContent = `$${cartData.total.toFixed(2)}`;
+    document.getElementById('total').textContent = `$${cartData.total.toFixed(2)}`;
+}
+
+async function updateQuantity(cartItemId, newQuantity) {
+    if (newQuantity <= 0) {
+        removeFromCart(cartItemId);
+        return;
+    }
+    
+    if (!isLoggedIn()) {
+        // For local cart, find the item and update
+        const cartItem = cartData.items.find(item => item.id === cartItemId);
+        if (cartItem) {
+            updateLocalCartQuantity(cartItem.item_id, parseInt(newQuantity));
+            loadLocalCart();
+            showToast('Cart updated!', 'success');
+        }
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/cart/${cartItemId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            },
+            body: JSON.stringify({ quantity: parseInt(newQuantity) })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            loadCart(); // Reload the entire cart
+            showToast('Cart updated!', 'success');
+        } else {
+            showToast(result.error || 'Failed to update cart', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating cart:', error);
+        showToast('Network error occurred', 'error');
+    }
+}
+
+async function removeFromCart(cartItemId) {
+    if (!confirm('Are you sure you want to remove this item from your cart?')) {
+        return;
+    }
+    
+    if (!isLoggedIn()) {
+        // For local cart, find the item and remove
+        const cartItem = cartData.items.find(item => item.id === cartItemId);
+        if (cartItem) {
+            removeFromLocalCart(cartItem.item_id);
+            loadLocalCart();
+            showToast('Item removed from cart!', 'success');
+        }
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/cart/${cartItemId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            loadCart(); // Reload the entire cart
+            showToast('Item removed from cart!', 'success');
+        } else {
+            showToast(result.error || 'Failed to remove item', 'error');
+        }
+    } catch (error) {
+        console.error('Error removing item:', error);
+        showToast('Network error occurred', 'error');
+    }
+}
+
+// Checkout button click handler
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('checkout-btn').addEventListener('click', () => {
+        showToast('Checkout functionality coming soon!', 'info');
+    });
+});
+</script>
+{% endblock %}
