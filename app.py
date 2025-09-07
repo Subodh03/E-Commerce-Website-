@@ -4,19 +4,19 @@ from flask import Flask
 from flask_cors import CORS
 from extensions import db, jwt
 
-# Configure logging
+
 logging.basicConfig(level=logging.DEBUG)
 
 def create_app():
     app = Flask(__name__)
     
-    # Configuration
+    
     app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET', 'dev-secret-key')
     database_url = os.environ.get('DATABASE_URL', 'sqlite:///ecommerce.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
-    # Set engine options based on database type
+    
     if database_url.startswith('postgresql://') or database_url.startswith('postgres://'):
         # PostgreSQL configuration
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -34,22 +34,22 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string')
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False  # Tokens don't expire for simplicity
     
-    # Initialize extensions
+    
     db.init_app(app)
     jwt.init_app(app)
     CORS(app)
     
-    # Import routes after app creation to avoid circular imports
+    
     from routes import main_bp, api_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     
-    # Create tables
+    
     with app.app_context():
         import models
         db.create_all()
         
-        # Create some sample items if none exist
+        
         if models.Item.query.count() == 0:
             sample_items = [
                 {'name': 'Laptop', 'description': 'High-performance laptop', 'price': 999.99, 'category': 'Electronics', 'stock': 10},
