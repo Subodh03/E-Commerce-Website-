@@ -10,7 +10,7 @@
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
+
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
@@ -62,12 +62,12 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
+    
     <main>
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Toast for notifications -->
+    
     <div class="toast-container position-fixed top-0 end-0 p-3">
         <div id="notification-toast" class="toast" role="alert">
             <div class="toast-header">
